@@ -1,23 +1,25 @@
-[README.md](https://github.com/user-attachments/files/27411799/README.md)
+[README.md](https://github.com/user-attachments/files/27412038/README.md)
 # Work Portfolio
 
-This repository is a portfolio of automation, reporting, data-processing, and web application projects built around agricultural research operations. The projects combine Python scripting, Excel processing, PDF generation, Flask web development, cloud data storage, and agronomy-specific workflows.
+This repository is a portfolio of automation, reporting, machine learning, breeding analytics, data-processing, and web application projects built around agricultural research operations. The projects combine Python, R, Excel processing, PDF generation, Flask web development, cloud data storage, and agronomy-specific workflows.
 
 ## Overview
 
-The work in this repository focuses on practical tools that reduce manual administrative effort and turn raw operational data into usable reports, invoices, maps, and dashboards.
+The work in this repository focuses on practical tools that reduce manual administrative effort, support plant breeding and field research decisions, and turn raw operational data into usable reports, invoices, maps, dashboards, and model outputs.
 
 Core themes include:
 
 - Automating repetitive research operations and billing tasks.
-- Processing Excel, CSV, PDF, and form data into finished deliverables.
-- Building tools for agricultural invoicing, spraying records, project reporting, and herbicide lookup workflows.
-- Connecting field operations data with web interfaces, cloud storage, and generated documents.
+- Processing Excel, CSV, PDF, image, and form data into finished deliverables.
+- Building tools for agricultural invoicing, spraying records, project reporting, herbicide lookup, breeding values, and genomic prediction workflows.
+- Connecting field operations data with web interfaces, cloud storage, generated documents, and statistical models.
 
 ## Technology Snapshot
 
-- **Languages:** Python, JavaScript, HTML, CSS, PowerShell, shell scripting
+- **Languages:** Python, R, JavaScript, HTML, CSS, PowerShell, shell scripting
 - **Python libraries:** pandas, openpyxl, requests, reportlab, PyPDF2, pypdf, PyMuPDF, pdfrw, pikepdf, pyHanko
+- **R/statistical tools:** tidyverse, data.table, lme4, caret, caretEnsemble, xgboost, BGLR-style genomic selection workflows, ASReml-based breeding analysis workflows
+- **Machine learning:** XGBoost, gradient boosting, deep neural networks, CNN/Keras examples, quantile regression, genomic selection scripts
 - **Web stack:** Flask, Jinja templates, JavaScript, CSS
 - **Cloud/data services:** Azure Cosmos DB, Azure Blob Storage, Firebase Admin, Google Cloud Storage-style file workflows
 - **Document workflows:** Excel workbooks, CSV exports, generated PDFs, fillable PDF forms, merged reports, image/document attachment handling
@@ -28,12 +30,63 @@ Core themes include:
 | --- | --- | --- |
 | Invoice automation | `AEAInvoice/` | Generated Excel invoices and summary CSV |
 | Herbicide lookup | `Appril herbicide lookup/` | Matched APPRIL/EPA herbicide workbook |
+| Corn breeding analytics | `Corn Breeding BreedValues/` | R package/functions for breeding values, spatial analysis, pedigree handling, and prediction |
+| Machine learning scripts | `Machine Learning Scripts/` | R scripts and notebooks for genomic prediction, image classification, DNN/CNN models, and competition-style modeling |
 | Web application | `PLIOP_Website-WebApp/` | Flask app, dashboards, invoices, and public project pages |
 | Research reporting | `Project Request PDF/` | Merged project request/report PDFs |
 | Spraying finance | `Spraying Reports/` | Excel/PDF reports and application map |
 | Utility scripts | `Work Code/` | Small data and file-processing utilities |
 
 ## Featured Projects
+
+### Corn Breeding BreedValues
+
+**Folder:** `Corn Breeding BreedValues/BreedStats-main/`
+
+`BreedStats` is an R package for breeding statistics, genetic value estimation, spatial analysis, pedigree handling, and prediction workflows. The package is structured with R package metadata, example scripts, bundled data, documentation, and reusable functions.
+
+**Highlights**
+
+- Implements breeding value workflows for corn breeding and hybrid/inbred evaluation.
+- Includes ASReml-oriented spatial and breeding value analysis scripts.
+- Provides tools for pedigree adjustment, genotype conversion, inbred name handling, image database support, and alpha lattice/yield trial analysis.
+- Includes prediction scripts using XGBoost and mixed model style workflows.
+- Provides simulated or packaged example data for testing package functions.
+
+**Representative files**
+
+- `Corn Breeding BreedValues/BreedStats-main/DESCRIPTION`
+- `Corn Breeding BreedValues/BreedStats-main/R/asremlBV.R`
+- `Corn Breeding BreedValues/BreedStats-main/R/xgboostBV.R`
+- `Corn Breeding BreedValues/BreedStats-main/R/PedigreeEngine.R`
+- `Corn Breeding BreedValues/BreedStats-main/R/Spatial Analysis_ASReml.R`
+- `Corn Breeding BreedValues/BreedStats-main/R/YT_Alpha Lattice.R`
+- `Corn Breeding BreedValues/BreedStats-main/Examples/`
+
+### Machine Learning Scripts
+
+**Folder:** `Machine Learning Scripts/scripts-main/`
+
+A collection of R scripts, R Markdown files, and Jupyter notebooks exploring machine learning methods across crop modeling, genomic selection, image classification, sports prediction, finance-style prediction, and Kaggle-style modeling workflows.
+
+**Highlights**
+
+- Genomic selection and breeding value scripts using BGLR-style workflows, custom GS logic, XGBoost, quantile random forests, and deep neural networks.
+- Keras/CNN examples for image classification and crop challenge modeling.
+- R and notebook examples for gradient boosting, caret workflows, DNNs, CNNs, and quantile regression.
+- Broader modeling practice examples, including March Madness, NFL, Jane Street, Jigsaw, and OSIC pulmonary fibrosis notebooks.
+- Useful as a technical archive showing experimentation across model families and data types.
+
+**Representative files**
+
+- `Machine Learning Scripts/scripts-main/BGLR_GS.R`
+- `Machine Learning Scripts/scripts-main/Custom_GS.R`
+- `Machine Learning Scripts/scripts-main/xgboostBV.R`
+- `Machine Learning Scripts/scripts-main/QRFBreedingValues.R`
+- `Machine Learning Scripts/scripts-main/Breeding Values-DNN.R`
+- `Machine Learning Scripts/scripts-main/cnn-keras.R`
+- `Machine Learning Scripts/scripts-main/cropchallenge keras.ipynb`
+- `Machine Learning Scripts/scripts-main/image_classification_from_scratch.ipynb`
 
 ### AEA Invoice Automation
 
@@ -159,16 +212,27 @@ Smaller one-off utilities for file extraction and agronomy data handling.
 ## Skills Demonstrated
 
 - Python automation for operational workflows.
+- R package development and breeding statistics workflows.
+- Genomic prediction, breeding value estimation, spatial analysis, pedigree handling, and yield trial analysis.
+- Machine learning experimentation with XGBoost, caret, DNNs, CNNs, Keras, quantile regression, and competition-style notebooks.
 - Excel and CSV parsing, validation, transformation, and report generation.
 - PDF form filling, PDF merging, attachment conversion, table-of-contents generation, and page numbering.
 - Flask application development with templates, routes, authentication, dashboards, and file upload flows.
 - Cloud-backed data workflows using Azure and Firebase-related services.
-- Agricultural research operations domain knowledge, including project billing, spraying records, product lookup, and field reporting.
+- Agricultural research operations domain knowledge, including project billing, spraying records, product lookup, field reporting, and breeding analytics.
 
-## Sharing Note
+## Suggested Cleanup Before Uploading to GitHub
 
-Some folders may contain generated invoices, research records, field operation exports, and other operational data. Before uploading this repository publicly, review generated Excel, CSV, and PDF files for personal, financial, research, or institutional information. Source code and sanitized sample inputs/outputs are safer to share than full production datasets.
+Before making this repository public, review and consider removing or sanitizing:
+
+- Generated invoices, research records, field operation exports, and institutional datasets.
+- Large generated files such as PDFs, Excel outputs, notebook checkpoints, `.rda`, `.rds`, `.npy`, `.zip`, and rendered `.html` notebooks when they are not needed for review.
+- Cache and local-history files such as `__pycache__/`, `.ipynb_checkpoints/`, `.Rhistory`, and `.DS_Store`.
+- API keys, connection strings, Firebase/Azure credentials, environment files, and private package files.
+- Any data containing personal, financial, research, or institutional information.
+
+Source code, documentation, and small sanitized sample inputs/outputs are safer to share than complete production datasets.
 
 ## Summary
 
-This portfolio demonstrates practical software development for agricultural operations: building data pipelines, automating Excel and PDF workflows, turning raw field and billing data into reports, and creating a Flask web application that connects operational workflows with cloud-backed storage and document generation.
+This portfolio demonstrates practical software development for agricultural operations and breeding analytics: building data pipelines, automating Excel and PDF workflows, modeling breeding and field data, turning raw operational records into reports, and creating a Flask web application that connects operational workflows with cloud-backed storage and document generation.
