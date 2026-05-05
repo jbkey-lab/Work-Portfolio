@@ -1,0 +1,190 @@
+---
+title: "Alpha-Lattice Designs of 1 rep/loc, 2 rep/loc, IB - REP spatial, and IB-2REP spatial, using three checks"
+author: "Jake Lamkey"
+date: "11/30/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+######################################################################################################
+######Rscript for Alpha Lattice Designs
+######################################################################################################
+rm(list = ls()) #remove environment vairalbes
+invisible(gc(reset = T)) #cleans memory "garbage collector"
+#memory.limit(size = 8071)
+#setwd("R:/Breeding/MT_TP/Models/QTL")
+######################################################################################################
+######The following packages need to be loaded
+######Load packages:  #
+######################################################################################################
+library("dplyr")
+library("DiGGer")
+
+######################################################################################################
+####output and input files
+
+fdp = "C:/Users/jake.lamkey/Documents/"
+
+```
+
+###################################################
+Function Spatial IB - REP with one rep per location
+###################################################
+
+```{r}
+
+oneRepIBDSpatial = function(numOfReps, numOfEntry){
+  
+  #numOfReps = 14  #reps of locations
+  #numOfEntry = 48 #entry number * reps per location
+  expDimRow = numOfEntry / 12 #num of rows with replicated design
+  numOfRows = numOfReps * expDimRow
+  numOfRows
+  numOfCheckMinEntry = numOfEntry - 3
+  
+  repIsOnePerLoc <- ibDiGGer(numberOfTreatments = numOfEntry,
+                             rowsInDesign = numOfRows, columnsInDesign = 12, # 56 * 12 / 48 = number of reps of each treat
+                             rowsInRep = expDimRow, columnsInRep = 12, # diminsions entry list to put into field
+                             rowsInBlock = 1, columnsInBlock = 12, # same diminsions as number of columns in design
+                             maxInterchanges = 1000000,
+                             searchIntensity = 100,
+                             #targetAValue = 0.387097,
+                             rngSeeds = c(11301, 29798))
+  #pr122 <- run(repIsOnePerLoc)
+  desPlot(getDesign(repIsOnePerLoc), trts=1:numOfCheckMinEntry, new=TRUE, label=FALSE,col='tan')
+  desPlot(getDesign(repIsOnePerLoc), trts=numOfCheckMinEntry+1, new=FALSE, label=TRUE, col=5)
+  desPlot(getDesign(repIsOnePerLoc), trts=numOfCheckMinEntry+2, new=FALSE, label=TRUE, col=6)
+  desPlot(getDesign(repIsOnePerLoc), trts=numOfCheckMinEntry+3, new=FALSE, label=TRUE, col=7,
+          bdef=cbind(expDimRow,12), bcol=3, bwd=2)
+  
+  iswapOneReps <- getDesign(repIsOnePerLoc)
+  iswapOneReps[iswapOneReps > 3] <- 4
+  corRepIsOnePerLoc <- corDiGGer(
+    numberOfTreatments=numOfEntry, 
+    rowsInDesign=numOfRows, 
+    columnsInDesign=12,
+    rowsInReplicate = expDimRow,
+    columnsInReplicate = 12,
+    treatRep = rep(c(1,1,1,1), c(numOfCheckMinEntry,1,1,1)),
+    treatGroup = rep(c(4,3,2,1), c(numOfCheckMinEntry,1,1,1)),
+    #searchIntensity = 100,
+    #maxInterchanges = 1000000,
+    blockSeq = list(c(expDimRow,12),c(numOfReps,1)),
+    #independentBlocks = list(c(expDimRow,12)),
+    initialDesign = getDesign(repIsOnePerLoc),
+    initialSwap = iswapOneReps, rngState = repIsOnePerLoc$.rng)
+  
+  desPlot(getDesign(corRepIsOnePerLoc), trts=1:numOfCheckMinEntry, new=TRUE, label=FALSE,col='tan')
+  desPlot(getDesign(corRepIsOnePerLoc), trts=numOfCheckMinEntry+1, new=FALSE, label=TRUE, col=5)
+  desPlot(getDesign(corRepIsOnePerLoc), trts=numOfCheckMinEntry+2, new=FALSE, label=TRUE, col=6)
+  desPlot(getDesign(corRepIsOnePerLoc), trts=numOfCheckMinEntry+3, new=FALSE, label=TRUE, col=7,
+          bdef=cbind(expDimRow,12), bcol=3, bwd=2)
+  return(c(corRepIsOnePerLoc,repIsOnePerLoc))
+}
+
+```
+###################################################
+Function Spatial IB - REP with two reps per location
+###################################################
+```{r}
+twoRepIBDSpatial = function(numOfReps, numOfEntry){
+  
+  #numOfReps = 11  #reps of locations
+  numOfEntry = numOfEntry * 2 #entry number * reps per location
+  expDimRow = numOfEntry / 12 #num of rows with replicated design
+  numOfRows = numOfReps * expDimRow
+  numOfRows
+  numOfCheckMinEntry = numOfEntry - 6
+  numOfCheckMinEntry.rep = numOfCheckMinEntry/2
+  
+  repIsTwoPerLoc <- ibDiGGer(numberOfTreatments = numOfEntry,
+                             # rowsInDesign * columnsInDesign / numberOfTreatments = number of reps of each treat
+                             rowsInDesign = numOfRows, columnsInDesign = 12, 
+                             # 11 reps
+                             rowsInRep = expDimRow, columnsInRep = 12, 
+                             # diminsions entry list to put into field
+                             rowsInBlock = 1, columnsInBlock = 12, 
+                             # same diminsions as number of columns in design
+                             treatGroup = rep(c(1,2,3,3,4,4,5,5), c(numOfCheckMinEntry.rep,numOfCheckMinEntry.rep,1,1,1,1,1,1)),
+                             maxInterchanges = 10000000,
+                             #targetAValue = 0.387097,
+                             searchIntensity =100,
+                             rngSeeds = c(11301, 29798))
+  
+  desPlot(getDesign(repIsTwoPerLoc), trts=1:numOfCheckMinEntry.rep, new=TRUE, label=FALSE,col='lightcyan1')
+  desPlot(getDesign(repIsTwoPerLoc), trts=c((numOfCheckMinEntry.rep+1): numOfCheckMinEntry), 
+          new=FALSE, label=FALSE, col='lightgreen')
+  desPlot(getDesign(repIsTwoPerLoc), trts=c(numOfCheckMinEntry+1, numOfCheckMinEntry+2), 
+          new=FALSE, label=TRUE, col=5)
+  desPlot(getDesign(repIsTwoPerLoc), trts=c(numOfCheckMinEntry+3, numOfCheckMinEntry+4), 
+          new=FALSE, label=TRUE, col=5)
+  desPlot(getDesign(repIsTwoPerLoc), trts=c(numOfCheckMinEntry+5, numOfCheckMinEntry+6), 
+          new=FALSE, label=TRUE, col=6,
+          bdef=cbind(expDimRow,12), bcol=4, bwd=4)
+  
+  repIsTwoPerLoc.plot = repIsTwoPerLoc$dlist
+  repIsTwoPerLoc.group = repIsTwoPerLoc$treatment
+  
+  repIsTwoPerLoc.plot = left_join(repIsTwoPerLoc.plot, repIsTwoPerLoc.group, by = c("ID"="ID"))
+  
+  
+  iswaptwoReps <- getDesign(repIsTwoPerLoc)
+  iswaptwoReps[iswaptwoReps > 7] <- 8
+  corRepIsTwoPerLoc <- corDiGGer(
+    numberOfTreatments=numOfEntry, 
+    rowsInDesign=numOfRows, 
+    columnsInDesign=12,
+    rowsInReplicate = expDimRow,
+    columnsInReplicate = 12,
+    treatRep = rep(c(1,1,1,1,1,1,1,1),
+                   c(numOfCheckMinEntry.rep,numOfCheckMinEntry.rep,1,1,1,1,1,1)),
+    treatGroup = rep(c(1,2,3,3,4,4,5,5), c(numOfCheckMinEntry.rep,numOfCheckMinEntry.rep,1,1,1,1,1,1)),
+    #searchIntensity = 100,
+    #maxInterchanges = 1000000,
+    blockSeq = list(c(expDimRow,12),c(numOfReps,1)),
+    #independentBlocks = list(c(expDimRow,6)),
+    initialDesign = getDesign(repIsTwoPerLoc),
+    initialSwap = iswaptwoReps, rngState = repIsTwoPerLoc$.rng)
+  
+  desPlot(getDesign(corRepIsTwoPerLoc), trts= c(1:numOfCheckMinEntry.rep), 
+          new=TRUE, label=FALSE ,col='lightcyan1')
+  desPlot(getDesign(corRepIsTwoPerLoc), trts= c((numOfCheckMinEntry.rep+1): numOfCheckMinEntry), 
+          new=FALSE, label=FALSE, col='lightgreen')
+  
+  desPlot(getDesign(corRepIsTwoPerLoc), trts= c(numOfCheckMinEntry+1, numOfCheckMinEntry+2), 
+          new=FALSE, label=TRUE, col=2)
+  desPlot(getDesign(corRepIsTwoPerLoc), trts= c(numOfCheckMinEntry+3, numOfCheckMinEntry+4), 
+          new=FALSE, label=TRUE, col=4)
+  desPlot(getDesign(corRepIsTwoPerLoc), trts= c(numOfCheckMinEntry+5, numOfCheckMinEntry+6), 
+          new=FALSE, label=TRUE, col=6,
+          bdef=cbind(expDimRow,12), bcol=4, bwd=4)
+  return(c(corRepIsTwoPerLoc,repIsTwoPerLoc,repIsTwoPerLoc.plot))
+}
+
+```
+###################################################
+Looping through Entry List
+###################################################
+```{r}
+dimField = 48*50 #2400 plots
+#num of plots in Entry List
+plotListOneRep = c(48,12,12,36,36,72,48,12,36,48,72)
+RepListOneRep = c(11,14,10,9,6,12,14,16,8,9,2)
+plotListTwoRep = c(36,48)
+repListTwoRep = c(10,11)
+
+for(i in length(plotListOneRep)){
+  plot = plotListOneRep[[i]]
+  rep = RepListOneRep[[i]]
+  assign(paste0("B",i,OneRep), oneRepIBDSpatial(rep, plot))
+  
+}
+
+for(i in length(plotListOneRep)){
+    plot = plotListTwoRep[[i]]
+    rep = repListTwoRep[[i]]
+    assign(paste0("B",i,OneRep), twoRepIBDSpatial(rep, plot))
+
+}
+```
+

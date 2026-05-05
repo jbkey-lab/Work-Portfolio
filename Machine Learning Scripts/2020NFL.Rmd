@@ -1,0 +1,411 @@
+---
+title: "NFL Big Data Bowl"
+output: html_notebook
+---
+
+Load the file and packages
+```{r}
+
+######################################################################################################
+######Rscript for NFL Big Data Bowl
+######################################################################################################
+rm(list = ls()) #remove environment vairalbes
+invisible(gc(reset = T)) #cleans memory "garbage collector"
+#memory.limit(size = 8071)
+#setwd("R:/Breeding/MT_TP/Models/QTL")
+######################################################################################################
+######The following packages need to be loaded
+######Load packages:  #
+######################################################################################################
+library("dplyr")
+library("data.table")
+library("stats")
+library("doParallel")
+library("caret")
+library("caretEnsemble")
+library("lubridate")
+library("multidplyr")
+
+######################################################################################################
+####need three files from this output for halfsib qtl analysis
+###use YT HS QTL.R script for qtl analysis
+#nfl = "D:/OneDrive/Data/nfl-big-data-bowl-2021/"
+nfl = "/media/jacoblamkey/Storage/nfl-big-data-bowl-2021/"
+
+nfl.results = "/media/jacoblamkey/Storage/nfl-big-data-bowl-2021/Results/"
+
+f=list.files(path = nfl, pattern="*.csv")
+
+for(i in 1:length(f)) assign(f[i], read.csv(paste0(nfl,f[i])))
+
+```
+
+Write function to merge tables and remove unwanted data, need to address memory managment at 8gb
+```{r}
+
+eda = function(week = week){
+  games_df = left_join(games.csv, week, by = "gameId")
+  players_df = left_join(players.csv, games_df, by = "nflId")
+  plays_df = left_join(plays.csv, players_df, by = c("playId","gameId"))
+  all_df = na.omit(plays_df) %>% setDT() #%>% filter(passResult != "I") %>% setDT()
+  all_df = all_df[,-c(3,33,34)]
+  rm(games_df, players_df, plays_df, week)
+  invisible(gc(reset=T))
+  
+  return(all_df)
+}
+
+weeks = c(list(week1.csv),list(week2.csv),list(week3.csv),list(week4.csv),list(week5.csv),list(week6.csv),list(week7.csv),list(week8.csv),list(week9.csv),list(week10.csv),list(week11.csv),list(week12.csv),list(week13.csv),list(week14.csv),list(week15.csv),list(week16.csv),list(week17.csv))
+
+rm(week1.csv,week2.csv,week3.csv,week4.csv,week5.csv,week6.csv,week7.csv,week8.csv,week9.csv,week10.csv,week11.csv,week12.csv,week13.csv,week14.csv,week15.csv,week16.csv,week17.csv)
+invisible(gc(reset=T))
+
+```
+
+Merge the tables together by week. Memory managment, works on 8Gb of ram...
+```{r}
+
+for(df in 1:17){
+  week.df = weeks[df][[1]]
+  assign(paste0("W",df), eda(week.df))
+  
+  rm(week.df)
+  invisible(gc())
+}
+
+rm(weeks,games.csv,players.csv,plays.csv)
+invisible(gc())
+
+weeks.df = rbind(W1,W2,W3,W4,W5,W6,W7,W8,W9,W10)
+
+rm(W1,W2,W3,W4,W5,W6,W7,W8,W9,W10)
+invisible(gc())
+
+weeks.df = rbind(weeks.df,W11,W12,W13,W14,W15,W16,W17)
+
+rm(W11,W12,W13,W14,W15,W16,W17)
+invisible(gc())
+
+```
+
+In Weeks.df, dis in the response variable to predict. Effects include fixed varables to turn into dummy varablies. In addition EDA will be performed here to create new varables from contiunous varables to estimate group_means, Group_max, Group_min, time_Series variables, and differences. Aggregating by all factors returns a difference of 4000 less rows so there are few duplicate rows.
+```{r Data Enginnerin}
+
+#Columns to aggregate by
+cluster <- new_cluster(18)
+
+colsToAgg = c("down",  "event", "displayName.y"
+              #, "homeTeamAbbr", "visitorTeamAbbr"
+              )
+
+weeks.df.agg = weeks.df %>% group_by(# quarter, 
+                                      down, event, passResult, displayName.y
+                                     #, position.y, homeTeamAbbr, visitorTeamAbbr
+                                     )  %>%
+  summarise(yardsToGo=mean( yardsToGo),yardlineNumber=mean( yardlineNumber ), offensePlayResult=mean( offensePlayResult ),playResult=mean( playResult),  x  =mean( x), y =mean( y ),s =mean( s ), a =mean( a ), dis  =mean( dis),o =mean( o  ), dir  =mean( dir), frameId =mean( frameId) ,isDefensivePI =mean( isDefensivePI      ), weight =mean( weight), week =mean( week) , defendersInTheBox=mean( defendersInTheBox ), numberOfPassRushers=mean( numberOfPassRushers ),preSnapVisitorScore=mean( preSnapVisitorScore  ), preSnapHomeScore=mean( preSnapHomeScore), absoluteYardlineNumber=mean( absoluteYardlineNumber), epa=mean( epa   ) ,jerseyNumber = mean(jerseyNumber )         
+) %>% partition( cluster = cluster) %>% collect()
+
+weeks.df.agg = weeks.df.agg %>% filter(passResult != "I", passResult != "S")
+weeks.df.agg = weeks.df.agg %>% filter(event != "timeout_home", event != "timeout_home",
+                                       event != "qb_strip_sack", event != "snap_direct",
+                                       event != "pass_outcome_incomplete", event != "touchdown",
+                                       event != "touchback", event != "lateral",
+                                       event != "line_set", event != "man_in_motion",
+                                       event != "huddle_break_offense", event != "huddle_start_offense",
+                                       event != "handoff", event != "fumble",
+                                       event != "fumble_defense_recovered", event != "fumble_offense_recovered"
+                                       ,event != "field_goal_blocked", event != "ball_snap",
+                                       event != "tackle", event != "play_action",
+                                       event != "qb_sack", event != "qb_spike"
+                                       , event != "first_contact" , event != "None" ,
+                                       event != "shift" ,event != "run_pass_option"
+                                       )
+
+#weeks.df.agg = aggregate(weeks.df[, ..colsToAgg], by=list(quarter = weeks.df$quarter ,down=weeks.df$down ,yardsToGo= weeks.df$yardsToGo,yardlineNumber= weeks.df$yardlineNumber , 
+#defendersInTheBox= weeks.df$defendersInTheBox , numberOfPassRushers= weeks.df$numberOfPassRushers ,preSnapVisitorScore= weeks.df$preSnapVisitorScore  , preSnapHomeScore= weeks.df$preSnapHomeScore, absoluteYardlineNumber= weeks.df$absoluteYardlineNumber, offensePlayResult= weeks.df$offensePlayResult ,playResult= weeks.df$playResult, epa= weeks.df$epa   , isDefensivePI = weeks.df$isDefensivePI      , weight = weeks.df$weight, week = weeks.df$week, x  = weeks.df$x, y = weeks.df$y ,s = weeks.df$s , a = weeks.df$a , dis  = weeks.df$dis,o = weeks.df$o  , dir  = weeks.df$dir, jerseyNumber = weeks.df$jerseyNumber  , frameId = weeks.df$frameId             
+#), mean)
+
+#convert age to days
+#get_age <- function(from_date,to_date = lubridate::now(),dec = FALSE){
+#  if(is.character(from_date)) from_date <- lubridate::as_date(from_date)
+#  invisible(gc())
+#  if(is.character(to_date))   to_date   <- lubridate::as_date(to_date)
+#  invisible(gc())
+#  if (dec) { age <- lubridate::interval(start = from_date, end = to_date)/(lubridate::days(365)+lubridate::hours(6))
+#  } else   { age <- lubridate::year(lubridate::as.period(lubridate::interval(start = from_date, end = to_date)))}
+#  age
+#  invisible(gc())
+#}
+
+#weeks.df$ageInDays = get_age(weeks.df$birthDate)
+#weeks.df = weeks.df %>% select(-birthDate)
+#invisible(gc())
+
+#convert height to inches
+#weeks.df$heightInInches = sapply(weeks.df$height,function(x) sum(as.numeric(x)*c(12,1)))
+##weeks.df = weeks.df %>% select(-height)
+#invisible(gc())
+
+#
+
+#rm(weeks.df)
+invisible(gc())
+
+y.df = weeks.df.agg$passResult
+#displayname, Position, hometeamabbr,visitorteamabbr
+#remove factors with response varaibles or anything closley related to it like "playResult" and "offensePlayResult"
+#colsToRemove = c("possessionTeam","playType","yardlineSide","offenseFormation","personnelO","personnelD","typeDropback","gameClock","penaltyCodes","penaltyJerseyNumbers","passResult","collegeName","gameDate","gameTimeEastern","homeTeamAbbr","visitorTeamAbbr","time","event","displayName.y","position.y","team","playDirection","route","gameId","playId","nflId","offensePlayResult","playResult")
+#colsToRemove = c("down", "quarter","playType", "penaltyCodes", "passResult", "personnelD", "gameId", "team", "offenseFormation")
+
+weeks.df.factor = weeks.df.agg[, colsToAgg]
+#weeks.df = weeks.df.agg[, -colsToRemove] # remove factors ; will join them back in with dummy vars
+weeks.df= setDT(weeks.df.agg)[ ,c("down", "passResult", "offensePlayResult", "event", "displayName.y") := NULL]              # Using := NULL
+
+rm(weeks.df.agg)
+invisible(gc()) #adds about 4gb so need to clean the memory each time we remove add and remove
+
+
+
+#dummy var converter
+DummyVars<-function(full2=full2){
+  library(onehot)
+  tmp = full2 #2,5
+  tmp = data.frame(tmp)
+  
+  tmp=tmp %>% mutate_all(as.factor)
+  
+  #fit=OneHotEncoder.fit(tmp)
+  #out = transform(fit, tmp)
+  encoder <- onehot(tmp,max_levels= 2000)
+  cat('encoder created \n')
+  #head(full)
+  out <- predict(encoder, tmp)
+  #head(output)
+  #colnames(out)[1:5]<-c('Fe', 'Male', 'CS', 'EX', 'NS')
+  cat('output created \n')
+    
+  full2=data.frame(out)
+  #full2[] <- lapply(full2, as.character)
+
+  rm(tmp,encoder,out)
+  invisible(gc())
+  full2 = full2[, which(colMeans(full2 == 0) < 1)]
+
+  return(full2)
+}
+
+weeks.df.factor.dummy = DummyVars(weeks.df.factor)
+
+weeks.df= cbind(weeks.df.factor.dummy, weeks.df)
+
+rm(weeks.df.factor.dummy); invisible(gc())
+
+```
+
+
+Split into test and train as matrix data structers
+```{r}
+#start feature enginearing with some group means next
+#split into train and testing groups
+set.seed(33)
+TTdf = sort(sample(nrow(weeks.df), nrow(weeks.df)*.8))
+invisible(gc())
+
+train.weeks.df = weeks.df[TTdf, ]; test.weeks.df = weeks.df[-TTdf, ]
+rm(weeks.df); invisible(gc())
+train.weeks.df[] <- lapply(train.weeks.df, as.numeric)
+
+train.weeks.df = as.matrix(train.weeks.df) 
+#test.weeks.df = as.matrix(test.weeks.df)
+test.weeks.df[] <- lapply(test.weeks.df, as.numeric)
+
+invisible(gc())
+
+train.y.df = y.df[TTdf]; test.y.df = y.df[-TTdf]
+rm(y.df, TTdf); invisible(gc())
+
+cat("Train has",nrow(train.weeks.df),"nrows and",ncol(train.weeks.df),"ncols","\n")
+cat("Test has",nrow(test.weeks.df),"nrows and",ncol(test.weeks.df),"ncols")
+
+```
+
+Try a run with caret to see what varables are interesting. DF is 16465777 rows by 26 int columns
+```{r}
+
+#xgbTreeGrid <- expand.grid(nrounds = 100, max_depth = 2, eta = 0.1, gamma = 0, colsample_bytree = 1.0,  subsample = 1.0, min_child_weight = 4)
+#glmnetGridElastic <- expand.grid(.alpha = 0.3, .lambda = 0.009) ## notice the . before the parameter
+#glmnetGridLasso <- expand.grid(.alpha = 1, .lambda = seq(0.001,0.1,by = 0.001))
+#glmnetGridRidge <- expand.grid(.alpha = 0, .lambda = seq(0.001,0.1,by = 0.001))
+cores=detectCores()
+
+cl <- makeCluster(cores[1]-2)
+registerDoParallel(cl)
+
+models.list <- caretList(
+  x=train.weeks.df,
+  y=as.factor(train.y.df),
+  #continue_on_fail = T,
+  trControl=trainControl(method="cv", index = createFolds(as.factor(train.y.df), 5),
+                         savePredictions=TRUE,allowParallel = TRUE,classProbs = T),
+  #tuneList=list(#blassoaveraged=caretModelSpec(method="blassoAveraged", thin=3),
+  #blasso=caretModelSpec(method="blasso",  thin=3),
+  #enet=caretModelSpec(method="enet", thin=3),
+  #xgbTree = caretModelSpec(method="xgbTree",  tuneGrid = xgbTreeGrid, nthread = 8)
+  #glmnet=caretModelSpec(method="glmnet", tuneGrid = glmnetGridElastic), ## Elastic, highly correlated with lasso and ridge regressions
+  #glmnet=caretModelSpec(method="glmnet", tuneGrid = glmnetGridLasso), ## Lasso
+  #glmnet=caretModelSpec(method="glmnet", tuneGrid = glmnetGridRidge) 
+  #)
+  methodList=c(
+    #"glmnet",
+    "rf",
+    #"nodeHarvest", 
+    #"xgbDART" ,
+    "xgbTree",
+    "gcvEarth"
+    #"gbm"
+  )
+  
+) 
+
+invisible(gc())
+models.list
+
+#NCAA.stacked<-caretStack(models.list, method="glm");NCAA.stacked
+models<-caretEnsemble(models.list,trControl=trainControl(
+  #number=100,
+  method = "cv",
+  verboseIter = TRUE
+))
+cat("Rsquared Value is ", models$ens_model$results$Accuracy)
+#cat(paste0("Train Cor is ", cor(train.y.df, train.preds)))
+invisible(gc())
+
+tab <- function(df=df,df2=df2){
+  tabDF=table(df,df2)
+  auc = (tabDF[1,1]+tabDF[2,2]) / (tabDF[1,2]+tabDF[2,1]+ tabDF[1,1]+tabDF[2,2])
+   return(auc)
+}
+
+train.preds<-predict(object=models, train.weeks.df)
+cat(paste0("Train Cor is ", round(tab(df = train.y.df, df2= train.preds), 4)))
+ 
+invisible(gc())
+
+
+test.preds<-predict(object=models, test.weeks.df)
+cat(paste0("Test Cor is ", round(tab(df = test.y.df, df2= test.preds), 4)))
+invisible(gc())
+
+stopCluster(cl)
+
+```
+
+Graphical Visualization
+```{r}
+#cor(cbind(train.weeks.df[,c(127:137)],train.y.df))
+
+
+featureImpXbgtree <- varImp(models$models$xgbTree)
+featureImpGvcearth <- varImp(models$models$gcvEarth)
+featureImpRf <- varImp(models$models$rf)
+
+ggplot(featureImpXbgtree, mapping = NULL,
+       
+       top = dim(featureImpXbgtree$importance)[1]-(dim(featureImpXbgtree$importance)[1]-50), environment = NULL) +
+  
+  xlab("Feature") +
+  
+  ylab("Importace") +
+  
+  theme(text = element_text(size=9))
+
+ggplot(featureImpGvcearth, mapping = NULL,
+       
+       top = dim(featureImpGvcearth$importance)[1]-(dim(featureImpGvcearth$importance)[1]-50), environment = NULL) +
+  
+  xlab("Feature") +
+  
+  ylab("Importace") +
+  
+  theme(text = element_text(size=9))
+
+ggplot(featureImpRf, mapping = NULL,
+       
+       top = dim(featureImpRf$importance)[1]-(dim(featureImpRf$importance)[1]-50), environment = NULL) +
+  
+  xlab("Feature") +
+  
+  ylab("Importace") +
+  
+  theme(text = element_text(size=9))
+
+
+
+featureImp = setDT(featureImpXbgtree$importance, keep.rownames= T)[]
+featureImpXgbtree = featureImp[1:30,]
+
+featureImp = setDT(featureImpGvcearth$importance, keep.rownames= T)[]
+featureImpGvcearth = featureImp[1:30,]
+
+featureImp = setDT(featureImpRf$importance, keep.rownames= T)[]
+featureImpRf = featureImp[1:30,]
+
+featureImp = rbind(featureImpGvcearth,featureImpXgbtree,featureImpRf)
+featureImp = featureImp[!duplicated(featureImp$rn),]
+
+weeks.df.agg = 
+
+
+```
+
+Testing on raw data
+```{r}
+
+f=list.files(path = nfl, pattern="*.csv")
+
+for(i in 1:length(f)) assign(f[i], read.csv(paste0(nfl,f[i])))
+
+weekDataForPredict = function(){
+  week = eda(week1)
+  
+  y.df = week$playResult
+  colsToSelect = featureImp$rn
+
+  week.factor = week[, colsToAgg]
+  #weeks.df = weeks.df.agg[, -colsToRemove] # remove factors ; will join them back in with dummy vars
+               # Using := NULL
+  week.df.factor.dummy = DummyVars(week.factor)
+  
+  week.df= cbind(week.df.factor.dummy, week)
+  week.df = week.df[,colsToSelect]
+
+  set.seed(33)
+  TTdf = sort(sample(nrow(week.df), nrow(week.df)*.8))
+  invisible(gc())
+  
+  train.week.df = week.df[TTdf, ]; test.week.df = week.df[-TTdf, ]
+  rm(week.df); invisible(gc())
+  train.week.df[] <- lapply(train.week.df, as.numeric)
+  
+  train.week.df = as.matrix(train.week.df) 
+  #test.week.df = as.matrix(test.week.df)
+  test.week.df[] <- lapply(test.week.df, as.numeric)
+  
+  invisible(gc())
+  
+  train.y.df = y.df[TTdf]; test.y.df = y.df[-TTdf]
+  rm(y.df, TTdf); invisible(gc())
+  
+  cat("Train has",nrow(train.week.df),"nrows and",ncol(train.week.df),"ncols","\n")
+  cat("Test has",nrow(test.week.df),"nrows and",ncol(test.week.df),"ncols")
+  
+  return(list(train.week.df, test.week.df, train.y.df, test.y.df))
+}
+
+```
+
+
+
+
+
+
