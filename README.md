@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/27412038/README.md)
 # Work Portfolio
 
 This repository is a portfolio of automation, reporting, machine learning, breeding analytics, data-processing, and web application projects built around agricultural research operations. The projects combine Python, R, Excel processing, PDF generation, Flask web development, cloud data storage, and agronomy-specific workflows.
